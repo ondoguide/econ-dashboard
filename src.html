@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>경제 지표 대시보드</title>
+<meta name="theme-color" content="#14213a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="경제지표">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f3ef; --surface:#fcfcfb; --surface-2:#f0efea; --line:#e3e1da; --grid:#ebe9e3;
+  --text:#0b0b0b; --text-2:#52514e; --text-3:#7d7b75; --accent:#14213a;
+  --up:#c43a3a; --down:#2a62c4;
+  --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s4:#eb6834; --s5:#6250d6; --s6:#e34948; --s7:#e87ba4; --s8:#008300;
+  --div-neg:#2a78d6; --div-pos:#e34948; --div-mid:#f0efec;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --line:#33332f; --grid:#2a2a27;
+    --text:#f0efec; --text-2:#c3c2b7; --text-3:#8f8e86; --accent:#e8e6df;
+    --up:#ff7b7b; --down:#78a9ff;
+    --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s4:#d95926; --s5:#9085e9; --s6:#e66767; --s7:#d55181; --s8:#008300;
+    --div-neg:#3987e5; --div-pos:#e66767; --div-mid:#383835;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --line:#33332f; --grid:#2a2a27;
+  --text:#f0efec; --text-2:#c3c2b7; --text-3:#8f8e86; --accent:#e8e6df;
+  --up:#ff7b7b; --down:#78a9ff;
+  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s4:#d95926; --s5:#9085e9; --s6:#e66767; --s7:#d55181; --s8:#008300;
+  --div-neg:#3987e5; --div-pos:#e66767; --div-mid:#383835;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;-webkit-text-size-adjust:100%}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.wrap{max-width:1180px;margin:0 auto;padding:16px 16px 40px}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:4px 0 14px}
+h1{font-size:20px;margin:0;letter-spacing:-.02em}
+.sub{font-size:12.5px;color:var(--text-2);margin-top:3px}
+.hbtn{display:flex;gap:6px;flex:none}
+button{font:inherit;color:inherit;cursor:pointer}
+.ibtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;height:36px;min-width:36px;padding:0 10px;font-size:13px;color:var(--text-2)}
+.ibtn:active{transform:scale(.97)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-size:12px;color:var(--text-3);margin-right:2px;min-width:34px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px 7px 9px;font-size:13.5px;color:var(--text-2);min-height:36px;transition:background .15s,border-color .15s}
+.chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c);opacity:.35;flex:none}
+.chip .no{font-size:11px;font-weight:700;color:var(--text-3)}
+.chip[aria-pressed="true"]{background:var(--surface-2);border-color:color-mix(in srgb,var(--c) 55%,var(--line));color:var(--text);font-weight:600}
+.chip[aria-pressed="true"] .dot{opacity:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:8px 12px;font-size:13px;color:var(--text-2);min-height:36px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface);font-weight:600}
+.pre{border:1px dashed var(--line);background:transparent;border-radius:999px;padding:7px 12px;font-size:12.5px;color:var(--text-2);min-height:34px}
+.pre.main{border-style:solid;border-color:var(--accent);color:var(--text);font-weight:600}
+.controls{display:grid;gap:10px;margin-bottom:12px}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.chart-title{font-weight:700;font-size:15px}
+.chart-note{font-size:12px;color:var(--text-3)}
+.cv-wrap{position:relative;width:100%}
+canvas{display:block;width:100%}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.12);min-width:150px;z-index:5;display:none}
+.tip .d{font-weight:700;margin-bottom:4px;color:var(--text)}
+.tip .r{display:flex;align-items:center;gap:6px;justify-content:space-between;padding:1px 0;color:var(--text-2)}
+.tip .r i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.tip .r b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:12px;color:var(--text-2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.tbar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:2px 0 8px;flex-wrap:wrap}
+.tbar .seg button{padding:6px 11px;min-height:32px;font-size:12.5px}
+.seg.iv button{min-width:42px;font-weight:600}
+.spanrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--text-3);margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.spanrow .rst{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:3px 9px;font-size:12px;color:var(--text-2);visibility:hidden}
+.spanrow .rst.on{visibility:visible}
+canvas.main{cursor:crosshair;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+canvas.main.grab{cursor:grabbing}
+.navwrap{margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+canvas.nav{touch-action:pan-y;cursor:pointer;user-select:none;-webkit-user-select:none}
+.moves{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.moves span{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;background:var(--surface)}
+.moves i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.moves b{color:var(--text);font-weight:600}
+.hint{font-size:11.5px;color:var(--text-3);margin-top:6px}
+.spark{display:block;width:100%;height:34px}
+.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--s2);margin-right:5px;vertical-align:1px}
+.multi{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.mcard{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface)}
+.mcard .t{font-size:13px;font-weight:700;display:flex;gap:6px;align-items:center}
+.mcard .t i{width:9px;height:9px;border-radius:50%}
+.mcard .t small{font-weight:400;color:var(--text-3)}
+h2{font-size:15px;margin:22px 0 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px}
+.card .top{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--text-2)}
+.card .top b{color:var(--text);font-size:13.5px;display:flex;gap:6px;align-items:center}
+.card .top b i{width:9px;height:9px;border-radius:50%}
+.card .v{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.card .v small{font-size:12px;font-weight:500;color:var(--text-3);margin-left:3px}
+.deltas{display:flex;gap:12px;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+.pct{font-size:11.5px;color:var(--text-3)}
+.bar{height:6px;border-radius:3px;background:var(--surface-2);position:relative;margin-top:3px}
+.bar u{position:absolute;top:-3px;width:3px;height:12px;border-radius:2px;background:var(--text);text-decoration:none}
+.note{font-size:12.3px;color:var(--text-2);line-height:1.5}
+.ana{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px}
+@media (max-width:820px){.ana{grid-template-columns:1fr}}
+.sum li{margin-bottom:6px;font-size:13.5px;line-height:1.55}
+.sum{margin:0;padding-left:18px}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--text-3);font-weight:600}
+.corr td{text-align:center;border:2px solid var(--surface);border-radius:4px;font-weight:600}
+.corr th{text-align:center}
+.scroll{overflow-x:auto}
+.foot{margin-top:26px;font-size:11.5px;color:var(--text-3);line-height:1.7}
+.empty{padding:40px 10px;text-align:center;color:var(--text-3);font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--accent);color:var(--surface);padding:9px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:560px){
+  .wrap{padding:12px 12px 32px} h1{font-size:18px} .card .v{font-size:20px}
+  .lbl{display:none} .panel{padding:12px} .controls{gap:8px}
+  .chip{padding:5px 10px 5px 8px;font-size:12.5px;min-height:32px;gap:5px}
+  .pre{padding:5px 10px;font-size:12px;min-height:30px}
+  .row.opts{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;scrollbar-width:none}
+  .row.opts::-webkit-scrollbar{display:none}
+  .seg{flex:none} .seg button{padding:7px 10px;font-size:12.5px;min-height:32px}
+  .chart-note{font-size:11.5px} .ibtn{height:34px;padding:0 9px}
+  .tbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none} .tbar::-webkit-scrollbar{display:none}
+  .tbar .seg button{padding:6px 9px;font-size:12px} .seg.iv button{min-width:36px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>경제 지표 대시보드</h1>
+      <div class="sub" id="sub">불러오는 중</div>
+    </div>
+    <div class="hbtn">
+      <button class="ibtn" id="refresh" title="데이터 새로고침" aria-label="데이터 새로고침">↻ 새로고침</button>
+      <button class="ibtn" id="theme" title="밝게/어둡게" aria-label="화면 밝기 전환">☾</button>
+    </div>
+  </header>
+
+  <section class="panel controls" aria-label="표시 설정">
+    <div class="row"><span class="lbl">묶음</span>
+      <button class="pre main" data-preset="core">기본 ①②③⑥</button>
+      <button class="pre" data-preset="all">전체 켜기</button>
+      <button class="pre" data-preset="none">전체 끄기</button>
+    </div>
+    <div class="row" id="chips"><span class="lbl">지표</span></div>
+    <div class="row opts">
+      <span class="lbl">보기</span>
+      <div class="seg" id="mode">
+        <button data-m="cmp" aria-pressed="true">겹쳐 비교</button><button data-m="multi">개별 차트</button>
+      </div>
+      <div class="seg" id="norm" title="겹쳐 비교 방식">
+        <button data-n="mm" aria-pressed="true">상대 위치</button><button data-n="b100">기준=100</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="chartPanel">
+    <div class="tbar">
+      <div class="seg iv" id="iv" role="group" aria-label="봉 단위"><button data-iv="D">일</button><button data-iv="W">주</button><button data-iv="M">월</button></div>
+      <div class="seg" id="range" role="group" aria-label="기간"><button data-r="1">1개월</button><button data-r="3">3개월</button><button data-r="6">6개월</button><button data-r="12">1년</button><button data-r="36">3년</button><button data-r="60">5년</button><button data-r="120">10년</button><button data-r="0">전체</button></div>
+    </div>
+    <div class="chart-head">
+      <div class="chart-title" id="ctitle">겹쳐 비교</div>
+      <div class="chart-note" id="cnote"></div>
+    </div>
+    <div class="spanrow"><span id="span"></span><button class="rst" id="reset">기간 처음으로</button></div>
+    <div id="chartArea"></div>
+    <div class="navwrap"><canvas class="nav" id="nav" aria-label="전체 기간 내비게이터"></canvas></div>
+    <div class="hint" id="hint"></div>
+    <div class="moves" id="moves"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <h2>지표별 현황</h2>
+  <div class="cards" id="cards"></div>
+
+  <h2>동향 분석 <span class="chart-note" style="font-weight:400">· 차트에서 보고 있는 구간 기준으로 바로 다시 계산됩니다</span></h2>
+  <div class="ana">
+    <section class="panel"><div class="chart-title" style="margin-bottom:8px">자동 요약 <span class="chart-note" id="sumnote"></span></div><ul class="sum" id="summary"></ul></section>
+    <section class="panel"><div class="chart-title">함께 움직이는 정도 <span class="chart-note" id="corrnote"></span></div>
+      <div class="chart-note" style="margin:4px 0 8px">+1에 가까우면 같은 방향, −1이면 반대 방향, 0 근처면 관계 약함</div>
+      <div class="scroll" id="corr"></div></section>
+  </div>
+
+  <h2 style="display:flex;justify-content:space-between;align-items:center">표로 보기 <button class="ibtn" id="tblBtn" aria-expanded="false">펼치기</button></h2>
+  <section class="panel scroll" id="tbl" hidden></section>
+
+  <div class="foot" id="foot"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script id="seed" type="application/json">__SEED__</script>
+<script>
+(()=>{
+const META={
+ fedfunds:{no:1,c:'--s1',kind:'rate',short:'미 금리'},
+ usdkrw:{no:2,c:'--s2',kind:'level',short:'환율'},
+ gold:{no:3,c:'--s3',kind:'level',short:'금'},
+ wti:{no:4,c:'--s4',kind:'level',short:'WTI'},
+ ust10:{no:5,c:'--s5',kind:'rate',short:'미 10년물'},
+ kospi:{no:6,c:'--s6',kind:'level',short:'KOSPI'},
+ unrate:{no:7,c:'--s7',kind:'rate',short:'미 실업률'},
+ krcli:{no:8,c:'--s8',kind:'level',short:'한국 선행'},
+};
+const CORE=['fedfunds','usdkrw','gold','kospi'];
+const NUM='①②③④⑤⑥⑦⑧';
+const IVN={D:'일간',W:'주간',M:'월간'};
+const WD='일월화수목금토';
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem('econ.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('econ.'+k,JSON.stringify(v))}catch(e){}}};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let C={};const col=v=>C[v]||(C[v]=css(v));const resetColors=()=>{C={}};
+
+let DATA=null,S={},MONTHS=[],DAYS=[];
+let state={on:store.get('on',CORE),iv:store.get('iv','D'),rng:store.get('rng',12),mode:store.get('mode','cmp'),norm:store.get('norm','mm')};
+let K=[],COL={},CACHE={};           // 현재 봉 단위의 키/값 열
+let view={a:0,b:0};                // 보이는 구간(실수 인덱스)
+let hover=-1,activeChart=null,charts=[],custom=false;
+
+/* ---------- 데이터 준비 ---------- */
+function decDaily(e){if(!e||!e.s)return e||{};const out={};let t=Date.parse(e.s+'T00:00:00Z');
+  for(let i=0;i<e.t.length;i++){t+=e.t[i]*864e5;out[new Date(t).toISOString().slice(0,10)]=e.v[i]}return out}
+const hasD=id=>S[id]&&S[id].daily&&Object.keys(S[id].daily).length>0;
+function load(d){
+  const keepEnd=K.length&&view.b>=K.length-1.5, span=view.b-view.a;
+  DATA=d;S={};CACHE={};const ms=new Set(),ds=new Set();
+  d.series.forEach(s0=>{const s={...s0};if(s.daily)s.daily=decDaily(s.daily);S[s.id]=s;
+    Object.keys(s.values).forEach(k=>ms.add(k));
+    if(s.daily&&s.id!=='fedfunds')Object.keys(s.daily).forEach(k=>{const w=new Date(k+'T00:00:00Z').getUTCDay();if(w&&w<6)ds.add(k)})});
+  MONTHS=[...ms].sort();DAYS=[...ds].sort();
+  DAYS.forEach(k=>ms.add(k.slice(0,7)));MONTHS=[...ms].sort();
+  const upd=d.updated?fmtUpd(d.updated):'';
+  $('#sub').innerHTML=`<span class="live"></span>최근 ${fmtK(DAYS[DAYS.length-1]||MONTHS[MONTHS.length-1])} · 갱신 ${upd} · 1시간마다 자동 갱신`;
+  $('#foot').innerHTML='<b>출처</b><br>'+d.series.map(s=>`${NUM[META[s.id].no-1]} ${s.name} — ${s.src}`).join('<br>')+
+   '<br><br>1시간마다 새 값을 받아옵니다. 장중에는 마지막 값이 최근 시세(최대 1시간 지연), 장 마감 후에는 종가입니다. 휴장일·발표 전 구간은 직전 값을 이어 그립니다. ⑦ 미국 실업률·⑧ 한국 경기선행지수는 월 1회 발표 지표입니다.<br>실시간 체결 시세가 아니며, 투자 판단의 근거가 아니라 흐름을 보는 참고용입니다.';
+  setIv(state.iv,false);
+  if(keepEnd&&span>0){view.b=K.length-1;view.a=Math.max(0,view.b-span)}
+  render();
+}
+function fmtUpd(u){const t=new Date(u.replace('Z',':00Z'));if(isNaN(t))return u;const k=new Date(t.getTime()+9*3600e3);
+  return `${k.getUTCMonth()+1}/${k.getUTCDate()} ${String(k.getUTCHours()).padStart(2,'0')}:${String(k.getUTCMinutes()).padStart(2,'0')}`}
+function fmtM(m){if(!m)return'';const[y,mo]=m.split('-');return `${y}.${mo}`}
+function fmtK(k){if(!k)return'';const p=k.split('-');return p.length===3?`${p[0]}.${p[1]}.${p[2]}`:`${p[0]}.${p[1]}`}
+function fmtTip(k){if(state.iv==='M')return fmtM(k);const w=WD[new Date(k+'T00:00:00Z').getUTCDay()];return state.iv==='W'?`${fmtK(k)} 주`:`${fmtK(k)} (${w})`}
+const endDate=k=>k.length===7?k+'-31':k;
+function fmtV(id,v){if(v==null||isNaN(v))return'–';const s=S[id];
+  if(s.unit==='%')return v.toFixed(2);
+  if(id==='usdkrw')return v.toLocaleString('ko-KR',{maximumFractionDigits:1,minimumFractionDigits:1});
+  if(id==='krcli')return v.toFixed(1);
+  return v>=1000?v.toLocaleString('ko-KR',{maximumFractionDigits:0}):v.toFixed(2);}
+function unitTxt(id){const u=S[id].unit;return u==='pt'?'':u}
+
+/* 일별 열(휴장일·월별 지표는 직전 값으로 채움) */
+function colD(id){
+  if(CACHE['D'+id])return CACHE['D'+id];
+  const s=S[id],D=s.daily||{},M=s.values,firstD=hasD(id)?Object.keys(D).sort()[0]:'9999';let last=null;
+  const out=DAYS.map(k=>{let v=null;
+    if(k>=firstD){if(D[k]!=null)v=D[k];else if(id==='fedfunds'){/* DFF는 주말 포함 → 그대로 */}}
+    else v=M[k.slice(0,7)]??null;
+    if(v!=null)last=v;return last});
+  return CACHE['D'+id]=out}
+function buildKeys(iv){
+  if(iv==='D')return DAYS;
+  if(iv==='W'){const out=[];for(let i=0;i<DAYS.length;i++){const n=DAYS[i+1];
+      if(!n||wk(n)!==wk(DAYS[i]))out.push(DAYS[i])}return out}
+  return MONTHS}
+function wk(k){const t=Date.parse(k+'T00:00:00Z');const d=new Date(t);const dow=(d.getUTCDay()+6)%7;return t-dow*864e5}
+function buildCol(id,iv){
+  const key=iv+id;if(CACHE[key])return CACHE[key];
+  let out;
+  if(iv==='D')out=colD(id);
+  else if(iv==='W'){const d=colD(id),idx=new Map(DAYS.map((k,i)=>[k,i]));out=K.map(k=>d[idx.get(k)])}
+  else{const D=S[id].daily||{},M=S[id].values;const lastIn={};
+    if(hasD(id))Object.keys(D).sort().forEach(k=>{lastIn[k.slice(0,7)]=D[k]});
+    let last=null;out=MONTHS.map(m=>{const v=lastIn[m]??M[m]??null;if(v!=null)last=v;return last})}
+  return CACHE[key]=out}
+function setIv(iv,keepRange=true){
+  let from=null,to=null;
+  if(keepRange&&K.length){from=endDate(K[Math.max(0,Math.round(view.a))]);to=endDate(K[Math.min(K.length-1,Math.round(view.b))])}
+  state.iv=iv;store.set('iv',iv);K=buildKeys(iv);COL={};Object.keys(META).forEach(id=>{if(S[id])COL[id]=buildCol(id,iv)});
+  if(from&&custom){let a=K.findIndex(k=>endDate(k)>=from),b=K.findIndex(k=>endDate(k)>=to);if(a<0)a=0;if(b<0)b=K.length-1;
+    if(b-a<8){a=Math.max(0,b-12)}view={a,b}}
+  else applyRange(state.rng,false);
+}
+function rangeStart(months){if(!months)return 0;const last=K[K.length-1];const ld=new Date(endDate(DAYS[DAYS.length-1]||last)+'T00:00:00Z');
+  ld.setUTCMonth(ld.getUTCMonth()-months);const f=ld.toISOString().slice(0,10);let a=K.findIndex(k=>endDate(k)>f);return Math.max(0,a<0?0:a)}
+function applyRange(r,anim=true){state.rng=r;store.set('rng',r);custom=false;
+  const b=K.length-1;let a=rangeStart(r);if(b-a<5)a=Math.max(0,b-(state.iv==='M'?12:5));
+  if(anim)animateTo(a,b);else{view={a,b};}syncControls()}
+
+/* ---------- 보이는 구간 조작 ---------- */
+let anim=null,inertia=null;
+function clampV(a,b){const n=K.length-1;const minSpan=Math.min(n,state.iv==='M'?6:5);let s=Math.max(minSpan,Math.min(n,b-a));
+  if(a<0){a=0}if(a+s>n){a=n-s}return{a,b:a+s}}
+function setView(a,b,user=true){view=clampV(a,b);if(user)markCustom();drawAll();schedule()}
+function markCustom(){if(!custom){custom=true;syncControls()}}
+function animateTo(a,b,ms=280){cancelAnimationFrame(anim);cancelAnimationFrame(inertia);const t=clampV(a,b),s={...view},t0=performance.now();
+  const step=now=>{const p=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-p,3);view={a:s.a+(t.a-s.a)*e,b:s.b+(t.b-s.b)*e};drawAll();
+    if(p<1)anim=requestAnimationFrame(step);else schedule()};anim=requestAnimationFrame(step)}
+function zoomAt(f,frac){const s=view.b-view.a,c=view.a+s*frac,ns=s*f;setView(c-ns*frac,c-ns*frac+ns)}
+function panBy(bars){setView(view.a+bars,view.b+bars)}
+
+/* ---------- controls ---------- */
+function buildChips(){
+  const box=$('#chips');
+  Object.keys(META).forEach(id=>{
+    const m=META[id];const b=document.createElement('button');
+    b.className='chip';b.dataset.id=id;b.style.setProperty('--c',`var(${m.c})`);
+    b.innerHTML=`<span class="dot"></span><span class="no">${NUM[m.no-1]}</span><span class="nm"></span>`;
+    b.onclick=()=>{state.on=state.on.includes(id)?state.on.filter(x=>x!==id):[...state.on,id];store.set('on',state.on);render()};
+    box.appendChild(b);
+  });
+  document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{
+    const p=b.dataset.preset;state.on=p==='core'?[...CORE]:p==='all'?Object.keys(META):[];store.set('on',state.on);render()});
+  document.querySelectorAll('#range button').forEach(b=>b.onclick=()=>applyRange(+b.dataset.r));
+  document.querySelectorAll('#iv button').forEach(b=>b.onclick=()=>{if(b.dataset.iv===state.iv)return;setIv(b.dataset.iv,true);hover=-1;render()});
+  document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{state.mode=b.dataset.m;store.set('mode',state.mode);render()});
+  document.querySelectorAll('#norm button').forEach(b=>b.onclick=()=>{state.norm=b.dataset.n;store.set('norm',state.norm);render()});
+  $('#reset').onclick=()=>applyRange(state.rng);
+  $('#tblBtn').onclick=()=>{const t=$('#tbl');t.hidden=!t.hidden;$('#tblBtn').textContent=t.hidden?'펼치기':'접기';$('#tblBtn').setAttribute('aria-expanded',!t.hidden);renderTable()};
+  $('#theme').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+    r.dataset.theme=dark?'light':'dark';store.set('theme',r.dataset.theme);resetColors();render()};
+  $('#refresh').onclick=()=>fetchData(true);
+  document.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,textarea'))return;const s=view.b-view.a;
+    if(e.key==='ArrowLeft'){panBy(-s*.1)}else if(e.key==='ArrowRight'){panBy(s*.1)}else if(e.key==='+'||e.key==='='){zoomAt(.8,1)}else if(e.key==='-'){zoomAt(1.25,1)}});
+}
+function syncControls(){
+  document.querySelectorAll('#chips .chip').forEach(b=>{const id=b.dataset.id;b.querySelector('.nm').textContent=S[id]?S[id].name:id;b.setAttribute('aria-pressed',state.on.includes(id))});
+  document.querySelectorAll('#range button').forEach(b=>b.setAttribute('aria-pressed',!custom&&+b.dataset.r===state.rng));
+  document.querySelectorAll('#iv button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.iv===state.iv));
+  document.querySelectorAll('#mode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===state.mode));
+  document.querySelectorAll('#norm button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===state.norm));
+  $('#norm').style.display=state.mode==='cmp'?'':'none';
+  $('#reset').classList.toggle('on',custom);
+  const isCore=state.on.length===CORE.length&&CORE.every(x=>state.on.includes(x));
+  document.querySelector('[data-preset="core"]').classList.toggle('main',isCore);
+}
+function visible(){return Object.keys(META).filter(id=>state.on.includes(id)&&S[id])}
+
+/* ---------- 차트 엔진 ---------- */
+function niceTicks(min,max,n){const span=max-min||1;const step0=span/n;const mag=Math.pow(10,Math.floor(Math.log10(step0)));
+  const step=[1,2,2.5,5,10].map(x=>x*mag).find(x=>span/x<=n)||10*mag;
+  const t=[];for(let v=Math.ceil(min/step)*step;v<=max+1e-9;v+=step)t.push(+v.toFixed(10));return t}
+function visRange(){return[Math.max(0,Math.floor(view.a)),Math.min(K.length-1,Math.ceil(view.b))]}
+function xTicks(i0,i1,plotW){
+  const lv=state.iv==='M'?[[4,'y'],[7,'m']]:[[4,'y'],[7,'m'],[10,'d']];
+  const per=Math.max(2,Math.floor(plotW/56));let best=null;
+  for(let L=0;L<lv.length;L++){const [n,t]=lv[L];const out=[];for(let i=Math.max(i0,1);i<=i1;i++)if(K[i].slice(0,n)!==K[i-1].slice(0,n))out.push(i);
+    best={out,t};if(out.length>=3)break}
+  let {out,t}=best;
+  if(t==='d'&&out.length>per){const e=Math.ceil(out.length/per);out=out.filter((_,k)=>k%e===0)}
+  if(t==='m'){const steps=[1,2,3,6];const e=steps.find(x=>out.length/x<=per)||6;out=out.filter(i=>((+K[i].slice(5,7))-1)%e===0)}
+  if(t==='y'&&out.length>per){const e=[1,2,5,10].find(x=>out.length/x<=per)||10;out=out.filter(i=>(+K[i].slice(0,4))%e===0)}
+  return out.map(i=>({i,l:t==='y'?K[i].slice(0,4):t==='m'?(K[i].slice(5,7)==='01'?K[i].slice(0,4):`${K[i].slice(2,4)}.${K[i].slice(5,7)}`):`${K[i].slice(5,7)}.${K[i].slice(8,10)}`,strong:t!=='y'&&(t==='m'?K[i].slice(5,7)==='01':K[i].slice(5,7)!==K[i-1].slice(5,7))}))}
+
+function makeChart(host,cfg){ // cfg:{ids,height,cmp}
+  host.innerHTML='';const wrap=document.createElement('div');wrap.className='cv-wrap';
+  const cv=document.createElement('canvas');cv.className='main';const tip=document.createElement('div');tip.className='tip';
+  wrap.append(cv,tip);host.appendChild(wrap);
+  const ch={cv,tip,wrap,cfg,geo:{padL:48,padR:14,plotW:100}};
+  ch.draw=()=>drawChart(ch);
+  attachGestures(ch);
+  new ResizeObserver(()=>ch.draw()).observe(wrap);
+  charts.push(ch);return ch}
+function transformed(ch,i0,i1){
+  const {ids,cmp}=ch.cfg,mm=state.norm==='mm';
+  return ids.map(id=>{const raw=COL[id];let f=v=>v;
+    if(cmp){let lo=Infinity,hi=-Infinity,base=null;for(let i=i0;i<=i1;i++){const v=raw[i];if(v==null)continue;if(base==null)base=v;if(v<lo)lo=v;if(v>hi)hi=v}
+      f=mm?(v=>hi===lo?50:(v-lo)/(hi-lo)*100):(v=>base?v/base*100:null)}
+    return{id,raw,f}})}
+function drawChart(ch){
+  const {cv,wrap,tip,cfg}=ch;const W=wrap.clientWidth,H=cfg.height,dpr=window.devicePixelRatio||1;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.height=H+'px'}
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+  if(!K.length)return;
+  const ends=cfg.cmp&&cfg.ids.length<=4&&W>=560;
+  const padL=cfg.cmp?40:52,padR=ends?84:14,padT=14,padB=24,plotW=W-padL-padR,plotH=H-padT-padB;
+  ch.geo={padL,padR,plotW};
+  const [i0,i1]=visRange();const L=transformed(ch,i0,i1);
+  let mn=Infinity,mx=-Infinity;L.forEach(l=>{for(let i=i0;i<=i1;i++){const v=l.raw[i];if(v==null)continue;const y=l.f(v);if(y<mn)mn=y;if(y>mx)mx=y}});
+  if(!isFinite(mn)){return}if(mn===mx){mn-=1;mx+=1}const pd=(mx-mn)*.07;mn-=pd;mx+=pd;
+  const X=i=>padL+(i-view.a)/(view.b-view.a)*plotW, Y=v=>padT+plotH*(1-(v-mn)/(mx-mn));
+  g.font='11px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif';
+  // y grid
+  g.strokeStyle=col('--grid');g.lineWidth=1;g.fillStyle=col('--text-3');g.textAlign='right';g.textBaseline='middle';
+  const fy=cfg.cmp?(v=>Math.round(v)):(v=>fmtV(cfg.ids[0],v));
+  niceTicks(mn,mx,cfg.height<220?3:5).forEach(v=>{const y=Math.round(Y(v))+.5;g.beginPath();g.moveTo(padL,y);g.lineTo(W-padR,y);g.stroke();g.fillText(fy(v),padL-6,y)});
+  // x ticks
+  g.textAlign='center';g.textBaseline='top';
+  xTicks(i0,i1,plotW).forEach(t=>{const x=Math.round(X(t.i))+.5;if(x<padL-1||x>W-padR+1)return;g.strokeStyle=col('--grid');g.beginPath();g.moveTo(x,padT);g.lineTo(x,H-padB);g.stroke();
+    g.fillStyle=t.strong?col('--text-2'):col('--text-3');g.fillText(t.l,x,H-padB+6)});
+  // lines (픽셀 단위 최소·최대 묶음으로 그려 긴 기간도 부드럽게)
+  g.save();g.beginPath();g.rect(padL,0,plotW,H);g.clip();
+  L.forEach(l=>{g.strokeStyle=col(META[l.id].c);g.lineWidth=cfg.cmp?2:1.8;g.lineJoin='round';g.lineCap='round';g.beginPath();
+    let pen=false,bx=null,bmin=0,bmax=0,blast=0;const a=Math.max(0,i0-1),b=Math.min(K.length-1,i1+1);
+    const flush=()=>{if(bx==null)return;if(bmin!==bmax){g.lineTo(bx,bmin);g.lineTo(bx,bmax)}g.lineTo(bx,blast)};
+    for(let i=a;i<=b;i++){const v=l.raw[i];if(v==null){flush();bx=null;pen=false;continue}const yv=l.f(v);if(yv==null)continue;const x=X(i),y=Y(yv),px=Math.round(x);
+      if(!pen){g.moveTo(x,y);pen=true;bx=px;bmin=bmax=blast=y;continue}
+      if(px===bx){bmin=Math.min(bmin,y);bmax=Math.max(bmax,y);blast=y}else{flush();bx=px;bmin=bmax=blast=y;g.lineTo(x,y)}}
+    flush();g.stroke()});
+  g.restore();
+  // end labels
+  if(ends){const labs=L.map(l=>{let i=i1;while(i>=i0&&l.raw[i]==null)i--;return{l,i,y:i>=i0?Y(l.f(l.raw[i])):0}}).filter(o=>o.i>=i0).sort((a,b)=>a.y-b.y);
+    for(let k=1;k<labs.length;k++)if(labs[k].y-labs[k-1].y<14)labs[k].y=labs[k-1].y+14;
+    g.textAlign='left';g.textBaseline='middle';labs.forEach(o=>{const x=X(o.i);if(x<=W-padR+1){g.fillStyle=col(META[o.l.id].c);g.beginPath();g.arc(x,Y(o.l.f(o.l.raw[o.i])),3,0,7);g.fill()}
+      g.fillStyle=col('--text-2');g.fillText(NUM[META[o.l.id].no-1]+' '+META[o.l.id].short,W-padR+8,o.y)})}
+  // last value tag for single-series charts
+  if(!cfg.cmp){const id=cfg.ids[0],r=COL[id];let i=i1;while(i>=i0&&r[i]==null)i--;if(i>=i0){const y=Y(r[i]);g.setLineDash([2,3]);g.strokeStyle=col(META[id].c);g.beginPath();g.moveTo(padL,Math.round(y)+.5);g.lineTo(W-padR,Math.round(y)+.5);g.stroke();g.setLineDash([])}}
+  // crosshair
+  if(hover>=i0&&hover<=i1){const x=X(hover);g.strokeStyle=col('--text-3');g.setLineDash([3,3]);g.beginPath();g.moveTo(Math.round(x)+.5,padT);g.lineTo(Math.round(x)+.5,H-padB);g.stroke();
+    let hy=null;
+    L.forEach(l=>{const v=l.raw[hover];if(v==null)return;const y=Y(l.f(v));hy=y;g.setLineDash([]);g.fillStyle=col('--surface');g.beginPath();g.arc(x,y,5,0,7);g.fill();g.fillStyle=col(META[l.id].c);g.beginPath();g.arc(x,y,3.5,0,7);g.fill()});
+    if(!cfg.cmp&&hy!=null){g.setLineDash([3,3]);g.strokeStyle=col('--text-3');g.beginPath();g.moveTo(padL,Math.round(hy)+.5);g.lineTo(W-padR,Math.round(hy)+.5);g.stroke()}
+    g.setLineDash([]);
+    if(activeChart===ch||(!activeChart&&charts[0]===ch)){
+      tip.innerHTML=`<div class="d">${fmtTip(K[hover])}</div>`+L.map(l=>{const v=l.raw[hover],p=hover>0?l.raw[hover-1]:null;
+        return `<div class="r"><span><i style="background:${col(META[l.id].c)}"></i> ${cfg.cmp?S[l.id].name:IVN[state.iv]+' 값'}</span><b>${fmtV(l.id,v)}${unitTxt(l.id)} ${dtxt(delta(l.id,v,p),true)}</b></div>`}).join('');
+      tip.style.display='block';const tw=tip.offsetWidth;let left=x+14;if(left+tw>W)left=x-tw-14;tip.style.left=Math.max(0,left)+'px';tip.style.top='6px'}
+    else tip.style.display='none'}
+  else tip.style.display='none';
+}
+function idxAt(ch,clientX){const r=ch.cv.getBoundingClientRect();const {padL,plotW}=ch.geo;const f=(clientX-r.left-padL)/plotW;return view.a+f*(view.b-view.a)}
+function fracAt(ch,clientX){const r=ch.cv.getBoundingClientRect();const {padL,plotW}=ch.geo;return Math.max(0,Math.min(1,(clientX-r.left-padL)/plotW))}
+function setHover(ch,clientX){activeChart=ch;const i=Math.round(idxAt(ch,clientX));const [i0,i1]=visRange();hover=Math.max(i0,Math.min(i1,i));drawAll()}
+function attachGestures(ch){
+  const cv=ch.cv,P=new Map();let mode=null,start=null,timer=null,vel=0,lastX=0,lastT=0,moved=false;
+  cv.addEventListener('wheel',e=>{e.preventDefault();cancelAnimationFrame(anim);
+    if(Math.abs(e.deltaX)>Math.abs(e.deltaY)&&!e.ctrlKey){panBy(e.deltaX/ch.geo.plotW*(view.b-view.a));return}
+    const f=Math.exp(e.deltaY*(e.ctrlKey?0.01:0.0018));zoomAt(f,fracAt(ch,e.clientX));setHover(ch,e.clientX)},{passive:false});
+  cv.addEventListener('dblclick',()=>applyRange(state.rng));
+  cv.addEventListener('pointerdown',e=>{cancelAnimationFrame(anim);cancelAnimationFrame(inertia);cv.setPointerCapture(e.pointerId);P.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;
+    if(P.size===1){start={x:e.clientX,y:e.clientY,a:view.a,b:view.b,t:performance.now()};lastX=e.clientX;lastT=start.t;vel=0;
+      if(e.pointerType==='mouse'){mode='pan';cv.classList.add('grab')}
+      else{mode='wait';clearTimeout(timer);timer=setTimeout(()=>{if(mode==='wait'){mode='cross';setHover(ch,start.x)}},280)}}
+    else if(P.size===2){clearTimeout(timer);const [p,q]=[...P.values()];mode='pinch';hover=-1;
+      start={d:Math.abs(p.x-q.x)||1,m:(p.x+q.x)/2,a:view.a,b:view.b}}});
+  cv.addEventListener('pointermove',e=>{
+    if(!P.has(e.pointerId)){if(e.pointerType==='mouse')setHover(ch,e.clientX);return}
+    P.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(mode==='pinch'&&P.size>=2){const [p,q]=[...P.values()];const d=Math.abs(p.x-q.x)||1,m=(p.x+q.x)/2;const {padL,plotW}=ch.geo;const r=cv.getBoundingClientRect();
+      const span0=start.b-start.a,ns=span0*start.d/d;const anchor=start.a+(start.m-r.left-padL)/plotW*span0;const a=anchor-(m-r.left-padL)/plotW*ns;setView(a,a+ns);return}
+    if(mode==='cross'){setHover(ch,e.clientX);return}
+    const dx=e.clientX-start.x;
+    if(mode==='wait'&&Math.abs(dx)>6){clearTimeout(timer);mode='pan';hover=-1}
+    if(mode==='pan'){moved=moved||Math.abs(dx)>3;const span=start.b-start.a;const sh=-dx/ch.geo.plotW*span;setView(start.a+sh,start.b+sh);
+      const now=performance.now();if(now>lastT){vel=-(e.clientX-lastX)/ch.geo.plotW*span/(now-lastT);lastX=e.clientX;lastT=now}
+      if(e.pointerType==='mouse'&&!moved)setHover(ch,e.clientX)}});
+  const end=e=>{if(!P.has(e.pointerId))return;P.delete(e.pointerId);clearTimeout(timer);cv.classList.remove('grab');
+    if(P.size===1&&mode==='pinch'){const p=[...P.values()][0];start={x:p.x,y:p.y,a:view.a,b:view.b,t:performance.now()};mode='pan';return}
+    if(P.size)return;
+    if(mode==='wait'&&e.type==='pointerup'){setHover(ch,start.x)}            // 짧게 탭 → 값 보기
+    else if(mode==='cross'&&e.pointerType!=='mouse'){/* 손을 떼도 마지막 값 유지 */}
+    if(mode==='pan'&&Math.abs(vel)>0.002&&performance.now()-lastT<80){let v=vel*16;const step=()=>{v*=0.92;panBy(v);if(Math.abs(v)>0.02)inertia=requestAnimationFrame(step)};inertia=requestAnimationFrame(step)}
+    mode=null};
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+  cv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!P.size){hover=-1;drawAll()}});
+}
+
+/* ---------- 내비게이터(전체 기간) ---------- */
+const nav={cv:null};
+function drawNav(){
+  const cv=$('#nav');if(!cv||!K.length)return;const W=cv.parentElement.clientWidth,H=44,dpr=window.devicePixelRatio||1;
+  if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=H*dpr;cv.style.height=H+'px'}
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+  const ids=visible();const n=K.length-1;const X=i=>i/n*W;
+  g.fillStyle=col('--surface-2');g.fillRect(0,0,W,H);
+  ids.slice(0,4).forEach(id=>{const r=COL[id];let lo=Infinity,hi=-Infinity;r.forEach(v=>{if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v)}});
+    g.strokeStyle=col(META[id].c);g.globalAlpha=.55;g.lineWidth=1;g.beginPath();let pen=false,lastPx=-1;
+    for(let i=0;i<=n;i++){const v=r[i];if(v==null){pen=false;continue}const px=Math.round(X(i));if(px===lastPx&&i%4)continue;lastPx=px;const y=4+(H-8)*(1-(v-lo)/((hi-lo)||1));if(!pen){g.moveTo(px,y);pen=true}else g.lineTo(px,y)}g.stroke();g.globalAlpha=1});
+  const xa=X(view.a),xb=X(view.b);
+  g.fillStyle=col('--bg');g.globalAlpha=.72;g.fillRect(0,0,xa,H);g.fillRect(xb,0,W-xb,H);g.globalAlpha=1;
+  g.strokeStyle=col('--accent');g.lineWidth=1.5;g.strokeRect(xa+.75,.75,Math.max(2,xb-xa-1.5),H-1.5);
+  g.fillStyle=col('--accent');[xa,xb].forEach(x=>{g.beginPath();g.roundRect?g.roundRect(x-3,H/2-9,6,18,3):g.rect(x-3,H/2-9,6,18);g.fill()});
+  // year labels
+  g.font='10px -apple-system,"Noto Sans KR",sans-serif';g.fillStyle=col('--text-3');g.textBaseline='bottom';g.textAlign='left';
+  let lastX=-99;for(let i=1;i<=n;i++){if(K[i].slice(0,4)!==K[i-1].slice(0,4)){const x=X(i),y=+K[i].slice(0,4);if(x-lastX>34&&x<W-30&&(y%(W<500?5:2)===0)){g.fillText(K[i].slice(0,4),x+2,H-2);lastX=x}}}
+}
+function attachNav(){
+  const cv=$('#nav');let drag=null;
+  const at=e=>{const r=cv.getBoundingClientRect();return (e.clientX-r.left)/r.width*(K.length-1)};
+  cv.addEventListener('pointerdown',e=>{cancelAnimationFrame(anim);cv.setPointerCapture(e.pointerId);const i=at(e),span=view.b-view.a,tol=(K.length-1)/cv.getBoundingClientRect().width*12;
+    if(Math.abs(i-view.a)<tol)drag={t:'a'};else if(Math.abs(i-view.b)<tol)drag={t:'b'};
+    else if(i>view.a&&i<view.b)drag={t:'m',o:i-view.a,span};
+    else{animateTo(i-span/2,i+span/2,240);markCustom();drag={t:'m',o:span/2,span}}});
+  cv.addEventListener('pointermove',e=>{if(!drag)return;const i=at(e);
+    if(drag.t==='a')setView(Math.min(i,view.b-5),view.b);else if(drag.t==='b')setView(view.a,Math.max(i,view.a+5));else setView(i-drag.o,i-drag.o+drag.span)});
+  const up=()=>{drag=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  new ResizeObserver(()=>drawNav()).observe(cv.parentElement);
+}
+
+/* ---------- 화면 ---------- */
+function drawAll(){charts.forEach(c=>c.draw());drawNav();drawSpan()}
+let tmr=null;function schedule(){clearTimeout(tmr);tmr=setTimeout(()=>{const ids=visible();renderMoves(ids);renderAnalysis(ids);if(!$('#tbl').hidden)renderTable()},120)}
+function drawSpan(){const [i0,i1]=visRange();if(!K.length)return;$('#span').textContent=`${fmtK(K[i0])} ~ ${fmtK(K[i1])} · ${IVN[state.iv]} ${i1-i0+1}개`}
+function render(){
+  if(!DATA)return;syncControls();charts=[];activeChart=null;
+  const ids=visible(),area=$('#chartArea');const mob=window.innerWidth<560;
+  $('#hint').textContent=matchMedia('(pointer:coarse)').matches?'좌우로 밀어 이동 · 두 손가락으로 확대/축소 · 길게 누르거나 탭하면 값 · 아래 막대로 전체 기간 이동':'휠로 확대/축소 · 끌어서 이동 · 더블클릭하면 처음 기간 · 아래 막대로 전체 기간 이동 · 키보드 ←→ / + −';
+  if(!ids.length){area.innerHTML='<div class="empty">위에서 지표를 하나 이상 켜 주세요.</div>';$('#legend').innerHTML='';$('#ctitle').textContent='겹쳐 비교';$('#cnote').textContent=''}
+  else if(state.mode==='cmp'){
+    const mm=state.norm==='mm';$('#ctitle').textContent='겹쳐 비교';
+    $('#cnote').textContent=mm?'보이는 구간 안에서 각 지표의 최저=0, 최고=100':'보이는 구간 첫 값 = 100 기준';
+    makeChart(area,{ids,cmp:true,height:mob?300:Math.min(440,Math.max(330,window.innerWidth*.34))});
+    $('#legend').innerHTML=ids.map(id=>`<span><i style="background:var(${META[id].c})"></i>${NUM[META[id].no-1]} ${S[id].name}</span>`).join('');
+  } else {
+    $('#ctitle').textContent='개별 차트';$('#cnote').textContent='지표마다 실제 단위 · 모든 차트가 같은 구간으로 함께 움직임';$('#legend').innerHTML='';
+    area.innerHTML='<div class="multi"></div>';const grid=area.firstChild;
+    ids.forEach(id=>{const box=document.createElement('div');box.className='mcard';
+      box.innerHTML=`<div class="t"><i style="background:var(${META[id].c})"></i>${NUM[META[id].no-1]} ${S[id].name}<small>${S[id].unit}</small></div><div class="cv"></div>`;grid.appendChild(box);
+      makeChart(box.querySelector('.cv'),{ids:[id],cmp:false,height:190})});
+  }
+  drawAll();renderCards(ids);renderMoves(ids);renderAnalysis(ids);if(!$('#tbl').hidden)renderTable();
+}
+function delta(id,a,b){if(a==null||b==null)return null;return META[id].kind==='rate'?{v:a-b,t:'%p'}:{v:(a/b-1)*100,t:'%'}}
+function dtxt(d,small){if(!d)return small?'':'–';const s=d.v>0?'▲':d.v<0?'▼':'■';return `<span class="${d.v>0?'up':d.v<0?'down':''}"${small?' style="font-weight:500;font-size:11px"':''}>${s} ${Math.abs(d.v).toFixed(d.t==='%p'?2:Math.abs(d.v)<10?2:1)}${d.t}</span>`}
+function pctl(id,v){const all=Object.values(S[id].values);const below=all.filter(x=>x<v).length;return Math.max(0,Math.min(100,Math.round(below/(all.length||1)*100)))}
+function isProv(m){const d=new Date(Date.now()+9*3600e3);return m===`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`}
+function lastOf(id){const ks=Object.keys(S[id].values).sort();return ks[ks.length-1]}
+function shiftM(m,k){let[y,mo]=m.split('-').map(Number);mo+=k;while(mo<1){mo+=12;y--}while(mo>12){mo-=12;y++}return `${y}-${String(mo).padStart(2,'0')}`}
+function dAt(id,k){const D=S[id].daily;let best=null;for(const x in D){if(x<=k&&(!best||x>best))best=x}return best?D[best]:null}
+function dShift(k,mo){const d=new Date(k+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+mo);return d.toISOString().slice(0,10)}
+function latest(id){
+  if(hasD(id)){const ks=Object.keys(S[id].daily).sort();const k=ks[ks.length-1],v=S[id].daily[k];
+    return{k,v,label:fmtK(k),d1:delta(id,v,S[id].daily[ks[ks.length-2]]),w1:delta(id,v,dAt(id,new Date(Date.parse(k)-7*864e5).toISOString().slice(0,10))),m1:delta(id,v,dAt(id,dShift(k,-1))),y1:delta(id,v,dAt(id,dShift(k,-12)))}}
+  const m=lastOf(id),v=S[id].values[m];
+  return{k:m,v,label:fmtM(m)+(isProv(m)?' 잠정':'')+' 발표',m1:delta(id,v,S[id].values[shiftM(m,-1)]),y1:delta(id,v,S[id].values[shiftM(m,-12)])}}
+function trendLine(id,L,p){const y1=L.y1;
+  const pos=p>=90?'2000년 이후 최상단권':p>=70?'2000년 이후 높은 편':p<=10?'2000년 이후 최하단권':p<=30?'2000년 이후 낮은 편':'2000년 이후 중간 수준';
+  const dir=!y1?'':Math.abs(y1.v)<(y1.t==='%p'?0.1:2)?'1년 전과 비슷':y1.v>0?'1년 새 상승':'1년 새 하락';return `${pos}, ${dir}`}
+function spark(id){const r=colD(id);const n=r.length;const a=Math.max(0,n-66);const pts=r.slice(a).filter(v=>v!=null);if(pts.length<2)return'';
+  const lo=Math.min(...pts),hi=Math.max(...pts);const d=pts.map((v,i)=>`${(i/(pts.length-1)*100).toFixed(2)},${(30-(v-lo)/((hi-lo)||1)*26).toFixed(2)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="${d}" fill="none" stroke="var(${META[id].c})" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`}
+function renderCards(ids){
+  const box=$('#cards');box.innerHTML='';
+  if(!ids.length){box.innerHTML='<div class="empty">켜진 지표가 없습니다.</div>';return}
+  ids.forEach(id=>{const L=latest(id),v=L.v;const p=pctl(id,v);
+    const c=document.createElement('div');c.className='card';
+    c.innerHTML=`<div class="top"><b><i style="background:var(${META[id].c})"></i>${NUM[META[id].no-1]} ${S[id].name}</b><span>${L.label}</span></div>
+     <div class="v">${fmtV(id,v)}<small>${S[id].unit}</small></div>
+     <div class="deltas" style="flex-wrap:wrap;gap:4px 12px">${L.d1!==undefined?`<span>전일 ${dtxt(L.d1)}</span><span>1주 ${dtxt(L.w1)}</span>`:''}<span>1개월 ${dtxt(L.m1)}</span><span>1년 ${dtxt(L.y1)}</span></div>
+     ${hasD(id)?spark(id)+'<div class="pct" style="margin-top:-4px">최근 3개월</div>':''}
+     <div><div class="pct">2000년 이후 역대 위치 ${p}/100 <span style="opacity:.75">(100=역대 최고)</span></div><div class="bar"><u style="left:calc(${p}% - 1.5px)"></u></div></div>
+     <div class="note">${trendLine(id,L,p)}</div>`;box.appendChild(c)});
+}
+function renderMoves(ids){const [i0,i1]=visRange();
+  $('#moves').innerHTML=ids.map(id=>{const r=COL[id];let a=i0,b=i1;while(a<=i1&&r[a]==null)a++;while(b>=i0&&r[b]==null)b--;if(a>b)return'';
+    return `<span><i style="background:var(${META[id].c})"></i>${NUM[META[id].no-1]} ${META[id].short} <b>${fmtV(id,r[b])}</b> ${dtxt(delta(id,r[b],r[a]))}</span>`}).join('')}
+function corr(a,b){const n=a.length;if(n<6)return null;const ma=a.reduce((s,x)=>s+x,0)/n,mb=b.reduce((s,x)=>s+x,0)/n;let sa=0,sb=0,sab=0;
+  for(let i=0;i<n;i++){const da=a[i]-ma,db=b[i]-mb;sa+=da*da;sb+=db*db;sab+=da*db}return sa&&sb?sab/Math.sqrt(sa*sb):null}
+function chg(id,arr,i0,i1){const out=[];for(let i=i0+1;i<=i1;i++){const a=arr[i],b=arr[i-1];out.push(a!=null&&b!=null&&b!==0?(META[id].kind==='rate'?a-b:Math.log(a/b)):null)}return out}
+function pairCorr(x,y,i0,i1){
+  let useM=state.iv!=='M'&&(!hasD(x)||!hasD(y));let A,B;
+  if(useM){const from=K[i0].slice(0,7),to=K[i1].slice(0,7);const m0=MONTHS.indexOf(from),m1=MONTHS.indexOf(to);if(m0<0||m1<0)return null;
+    A=chg(x,buildColM(x),m0,m1);B=chg(y,buildColM(y),m0,m1)}else{A=chg(x,COL[x],i0,i1);B=chg(y,COL[y],i0,i1)}
+  const a=[],b=[];A.forEach((v,i)=>{if(v!=null&&B[i]!=null){a.push(v);b.push(B[i])}});return corr(a,b)}
+function buildColM(id){const k='M'+id;if(CACHE[k])return CACHE[k];const sv=K,sc=COL;K=MONTHS;const r=buildCol(id,'M');K=sv;return r}
+function mix(c1,c2,t){const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const a=p(c1),b=p(c2);return'#'+a.map((x,i)=>Math.round(x+(b[i]-x)*t).toString(16).padStart(2,'0')).join('')}
+function renderAnalysis(ids){
+  const [i0,i1]=visRange();const box=$('#corr');
+  $('#corrnote').textContent=`· 보이는 구간 · ${IVN[state.iv]} 변화 기준`;
+  const C2={};
+  if(ids.length<2){box.innerHTML='<div class="empty">지표를 두 개 이상 켜면 보입니다.</div>'}
+  else{const mid=col('--div-mid'),neg=col('--div-neg'),pos=col('--div-pos');
+    let h='<table class="corr"><tr><th></th>'+ids.map(id=>`<th>${NUM[META[id].no-1]}</th>`).join('')+'</tr>';
+    ids.forEach(r=>{h+=`<tr><th style="text-align:left">${NUM[META[r].no-1]} ${META[r].short}</th>`;ids.forEach(c=>{
+      if(r===c){h+='<td style="background:var(--surface-2);color:var(--text-3)">–</td>';return}
+      const key=[r,c].sort().join();const v=key in C2?C2[key]:(C2[key]=pairCorr(r,c,i0,i1));
+      if(v==null){h+='<td>–</td>';return}const bg=v>=0?mix(mid,pos,Math.min(1,v)):mix(mid,neg,Math.min(1,-v));
+      h+=`<td title="${S[r].name} · ${S[c].name}" style="background:${bg};color:${Math.abs(v)>.55?'#fff':'var(--text)'}">${v>=0?'+':''}${v.toFixed(2)}</td>`});h+='</tr>'});
+    box.innerHTML=h+'</table>'}
+  const sum=$('#summary');const items=[];
+  $('#sumnote').textContent=`· ${fmtK(K[i0])}~${fmtK(K[i1])} · ${IVN[state.iv]}`;
+  ids.forEach(id=>{const r=COL[id];let hi=-Infinity,lo=Infinity,kh=0,kl=0,a=null,b=null;
+    for(let i=i0;i<=i1;i++){const v=r[i];if(v==null)continue;if(a==null)a=i;b=i;if(v>hi){hi=v;kh=i}if(v<lo){lo=v;kl=i}}
+    if(a==null||a===b)return;const d=delta(id,r[b],r[a]);const fromHi=delta(id,r[b],hi);
+    const f=k=>(state.iv!=='M'&&!hasD(id))?fmtM(k.slice(0,7)):fmtK(k);
+    items.push(`<li><b>${NUM[META[id].no-1]} ${S[id].name}</b> — 구간 중 ${dtxt(d)}. 최고 ${fmtV(id,hi)}(${f(K[kh])}), 최저 ${fmtV(id,lo)}(${f(K[kl])})${fromHi&&Math.abs(fromHi.v)>0.001?`, 지금은 최고 대비 ${dtxt(fromHi)}`:', 지금이 구간 최고'}.</li>`)});
+  if(ids.length>=2){let best=null;for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const key=[ids[i],ids[j]].sort().join();const v=key in C2?C2[key]:pairCorr(ids[i],ids[j],i0,i1);
+      if(v!=null&&(!best||Math.abs(v)>Math.abs(best.v)))best={a:ids[i],b:ids[j],v}}
+    if(best)items.push(`<li>보이는 구간에서 가장 뚜렷한 관계: <b>${S[best.a].name}</b>와 <b>${S[best.b].name}</b> (${best.v>=0?'같은 방향':'반대 방향'}, 상관 ${best.v>=0?'+':''}${best.v.toFixed(2)}).</li>`)}
+  sum.innerHTML=items.join('')||'<li>지표를 켜면 요약이 나옵니다.</li>';
+}
+function renderTable(){
+  const ids=visible();const box=$('#tbl');if(!ids.length){box.innerHTML='<div class="empty">켜진 지표가 없습니다.</div>';return}
+  const [i0,i1]=visRange();const rows=[];for(let i=i1;i>=Math.max(i0,i1-59);i--)rows.push(i);
+  box.innerHTML='<table><tr><th>'+(state.iv==='M'?'월':'날짜')+'</th>'+ids.map(id=>`<th>${NUM[META[id].no-1]} ${S[id].name}<br><span style="font-weight:400">${S[id].unit}</span></th>`).join('')+'</tr>'+
+   rows.map(i=>'<tr><td>'+fmtTip(K[i])+'</td>'+ids.map(id=>`<td>${fmtV(id,COL[id][i])}</td>`).join('')+'</tr>').join('')+
+   `</table><div class="chart-note" style="margin-top:6px">보이는 구간의 최근 ${rows.length}개 ${IVN[state.iv]} 값 · 휴장일·월별 지표는 직전 값</div>`;
+}
+
+/* ---------- 데이터 받기 ---------- */
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),1800)}
+async function fetchData(manual){
+  try{const r=await fetch('data.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;const d=await r.json();
+    const old=DATA&&DATA.updated;if(old!==d.updated||manual)load(d);store.set('cache',d);if(manual)toast(old===d.updated?'이미 최신 데이터입니다':'새 데이터를 불러왔습니다')}
+  catch(e){if(manual)toast('오프라인 · 저장된 데이터를 표시합니다')}
+}
+const th=store.get('theme',null);if(th)document.documentElement.dataset.theme=th;
+buildChips();attachNav();
+let seed=null;try{seed=JSON.parse(document.getElementById('seed').textContent)}catch(e){}
+const cached=store.get('cache',null);
+const pick=[cached,seed].filter(Boolean).sort((a,b)=>(b.updated||'').localeCompare(a.updated||''))[0];
+if(pick)load(pick);
+fetchData(false);
+setInterval(()=>{if(document.visibilityState==='visible')fetchData(false)},10*60e3);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')fetchData(false)});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{resetColors();render()});
+let rw=window.innerWidth;window.addEventListener('resize',()=>{if((rw<560)!==(window.innerWidth<560)){rw=window.innerWidth;render()}});
+})();
+
+</script>
+</body>
+</html>
