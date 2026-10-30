@@ -879,7 +879,10 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 (async()=>{try{const r=await fetch('config.json?t='+Date.now(),{cache:'no-store'});if(r.ok){const c=await r.json();if(c&&c.worker)CFG.worker=String(c.worker).trim()}}catch(e){}
   if(CFG.worker){pollLive();setInterval(pollLive,60e3);if(FL.src==='stk'){const st=store.get('stock',recentStocks()[0]);loadStock(st.code,st.name)}}
   renderFlows(true)})();
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+  const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl&&!reloaded){reloaded=true;location.reload()}}); // 새 버전이 깔리면 한 번 자동 새로고침
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{})}
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{resetColors();render()});
 let rw=window.innerWidth;window.addEventListener('resize',()=>{if((rw<560)!==(window.innerWidth<560)){rw=window.innerWidth;render()}});
 })();
