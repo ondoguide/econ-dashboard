@@ -1,5 +1,5 @@
 """경제 지표 월별 데이터 수집 → data.json
-출처: FRED(미 연준), OECD, Yahoo Finance(KOSPI), datasets/gold-prices(금)
+출처: FRED(미 연준), OECD, Yahoo Finance(시세·거래량), datasets/gold-prices(금), Daum 금융(투자자별 수급)
 """
 import csv, io, json, urllib.request, datetime, sys, time, os, subprocess, shutil
 
@@ -7,17 +7,18 @@ START = "2000-01"
 DAILY_START = "2000-01-01"  # 일간·주간 보기용 일별 데이터
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "text/csv,application/json,*/*"}
 
-def get(url, tries=3, browser=False):
+def get(url, tries=3, browser=False, headers=None):
     """curl 우선(프록시·TLS 호환성), 없으면 urllib"""
     last = None
     for i in range(tries):
         try:
             if shutil.which("curl"):
-                cmd = ["curl", "-sS", "-L", "--max-time", "40"] + (["-A", "Mozilla/5.0"] if browser else []) + [url]
+                hdr = sum((["-H", f"{k}: {v}"] for k, v in (headers or {}).items()), [])
+                cmd = ["curl", "-sS", "-L", "--max-time", "40"] + (["-A", "Mozilla/5.0"] if browser else []) + hdr + [url]
                 r = subprocess.run(cmd,
                                    capture_output=True, check=True)
                 return r.stdout.decode("utf-8")
-            req = urllib.request.Request(url, headers=UA if browser else {})
+            req = urllib.request.Request(url, headers={**(UA if browser else {}), **(headers or {})})
             with urllib.request.urlopen(req, timeout=40) as r:
                 return r.read().decode("utf-8")
         except Exception as e:
@@ -71,6 +72,34 @@ def fred_daily(sid):
         if len(row) < 2 or not row[0][:1].isdigit(): continue
         try: out[row[0][:10]] = round(float(row[1]), 4)
         except ValueError: pass
+    return out
+
+# ── 수급(투자자별 순매수) ──────────────────────────────
+FLOW_COLS = ["f", "i", "p", "mf", "pf", "fi", "pe", "ins", "bk", "ef", "ec"]
+FLOW_KEYS = {"mf": "MUTUAL_FUND", "pf": "PENSION_FUND", "fi": "FINANCIAL_INVESTOR", "pe": "PRIVATE_EQUITY_FUND",
+             "ins": "INSURANCE_COMPANIES", "bk": "BANK", "ef": "ETC_FINANCIAL_INSTITUTION", "ec": "ETC_CORPORATION"}
+
+def daum_flows(market="KOSPI"):
+    """Daum 금융 · 시장 투자자별 일별 순매수(원) → {날짜:[억원 x 11]}"""
+    out = {}
+    for page in range(1, 6):
+        txt = get(f"https://finance.daum.net/api/investor/{market}/days?page={page}&perPage=1000&pagination=true&details=true",
+                  browser=True, headers={"Referer": "https://finance.daum.net/domestic/investors"})
+        j = json.loads(txt); rows = j.get("data") or []
+        for r in rows:
+            d = r.get("details") or {}
+            vals = [r.get("foreignStraightPurchasePrice"), r.get("institutionStraightPurchasePrice"), r.get("individualStraightPurchasePrice")]
+            vals += [d.get(FLOW_KEYS[c]) for c in FLOW_COLS[3:]]
+            out[r["date"][:10]] = [None if v is None else round(v / 1e8) for v in vals]
+        if page >= (j.get("totalPages") or 1): break
+        time.sleep(1)
+    return out
+
+def yahoo_volume(sym):
+    txt = get(f"https://query2.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&period1=1451606400&period2=4102444800", browser=True)
+    r = json.loads(txt)["chart"]["result"][0]; out = {}
+    for t, v in zip(r["timestamp"], r["indicators"]["quote"][0]["volume"]):
+        if v: out[datetime.datetime.fromtimestamp(t + 9 * 3600, datetime.UTC).strftime("%Y-%m-%d")] = int(v)
     return out
 
 def merged(primary, fallback):
@@ -145,6 +174,25 @@ def main(path):
         if "daily" in item: item["daily"] = enc_daily(item["daily"])
         data["series"].append(item)
         print(sid, "월", len(item["values"]), max(item["values"]) if item["values"] else None, "| 일", len(d), max(d) if d else None)
+    # 수급: KOSPI 투자자별 순매수(억원) + KOSPI 거래량
+    prev_all = {}
+    if os.path.exists(path):
+        try: prev_all = json.load(open(path, encoding="utf-8"))
+        except Exception: prev_all = {}
+    try:
+        fl = daum_flows("KOSPI")
+        ks = sorted(fl); base = enc_daily({k: 0 for k in ks})
+        data["flows"] = {"market": "KOSPI", "unit": "억원", "src": "Daum 금융 · 투자자별 매매동향",
+                         "cols": FLOW_COLS, "s": base["s"], "t": base["t"], "v": [fl[k] for k in ks]}
+        print("flows", len(ks), ks[0], ks[-1])
+    except Exception as e:
+        print("FAIL flows", e, file=sys.stderr)
+        if prev_all.get("flows"): data["flows"] = prev_all["flows"]; print("  -> keep previous flows", file=sys.stderr)
+    try:
+        vol = yahoo_volume("%5EKS11"); data["kospiVol"] = enc_daily(vol); print("kospiVol", len(vol))
+    except Exception as e:
+        print("FAIL kospiVol", e, file=sys.stderr)
+        if prev_all.get("kospiVol"): data["kospiVol"] = prev_all["kospiVol"]
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
 
